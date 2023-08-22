@@ -55,6 +55,19 @@ class Autoencoder:
         self._create_folder_if_it_doesnt_exist(save_folder)
         self._save_parameters(save_folder)
         self._save_weights(save_folder)
+   
+    def load_weights(self, weights_path):
+        self.model.load_weights(weights_path)
+        
+    @classmethod
+    def load(cls, save_folder="."):
+        parameters_path = os.path.join(save_folder, "parameters.pkl") 
+        with open(parameters_path, "rb") as f:
+            parameters = pickle.load(f)
+        autoencoder = Autoencoder(*parameters)
+        weights_path = os.path.join(save_folder, "weights.h5")
+        autoencoder.model.load_weights(weights_path)
+        return autoencoder
 
     def _create_folder_if_it_doesnt_exist(self, folder):
         if not os.path.exists(folder):
