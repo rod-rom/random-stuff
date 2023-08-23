@@ -1,7 +1,8 @@
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation, Lambda
+from tensorflow.python.framework.ops import disable_eager_execution
 from tensorflow.keras import backend as K
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.losses import MeanSquaredError
 import numpy as np
 import os
@@ -10,6 +11,7 @@ import pickle
 import tensorflow as tf
 
 tf.compat.v1.disable_eager_execution()
+disable_eager_execution()
 
 class Autoencoder:
     """
@@ -199,6 +201,23 @@ class Autoencoder:
         x = Dense(self.latent_space_dim, name="encoder_output")(x)
         return x
 
+
+def _calculate_reconstruction_loss(y_target, y_predicted):
+    error = y_target - y_predicted 
+    reconstruction_loss = K.mean(K.square(error), axis=[1, 2, 3])
+    return reconstruction_loss
+
+def calculate_kl_loss(model):
+    # wrap '_calcualte_kl+loss such hat it takes the model as an argument,
+    # returns a function which can take arbitrary number of arguments
+    # (for compatibility with `metrics` and utility in the loss function)
+    # and returns the kl loss
+    def _calculate_kl_loss(*args):
+        kl_loss = -0.5 * K.sum(1 + model.log_variance - K.square(model.mu) - K.exp(model.log_variance), axis=1)
+        return kl_loss
+
+    return _calculate_kl_loss
+
 class VAE:
     """
     VAE represents a Deep Convolutional autoencoder architecture with mirrored encoder and decoder components
@@ -235,8 +254,8 @@ class VAE:
         optimizer = Adam(learning_rate=learning_rate)
         self.model.compile(optimizer=optimizer, 
                            loss=self._calculate_combined_loss, 
-                           metrics=[self._calculate_reconstruction_loss, 
-                                    self._calculate_kl_loss])
+                           metrics=[_calculate_reconstruction_loss, 
+                                    calculate_kl_loss(self)])
 
     def train(self, x_train, batch_size, num_epochs):
         self.model.fit(x_train, 
@@ -263,25 +282,17 @@ class VAE:
         parameters_path = os.path.join(save_folder, "parameters.pkl") 
         with open(parameters_path, "rb") as f:
             parameters = pickle.load(f)
-        autoencoder = Autoencoder(*parameters)
+        autoencoder = VAE(*parameters)
         weights_path = os.path.join(save_folder, "weights.h5")
         autoencoder.model.load_weights(weights_path)
         return autoencoder
 
     def _calculate_combined_loss(self, y_target, y_predicted):
-        reconstruction_loss = self._calculate_reconstruction_loss(y_target, y_predicted)
-        kl_loss = self._calculate_kl_loss(y_target, y_predicted)
+        reconstruction_loss = _calculate_reconstruction_loss(y_target, y_predicted)
+        kl_loss = calculate_kl_loss(self)()
         combined_loss = self.reconstruction_loss_weight*reconstruction_loss + kl_loss
         return combined_loss
-    
-    def _calculate_reconstruction_loss(self, y_target, y_predicted):
-        error = y_target - y_predicted 
-        reconstruction_loss = K.mean(K.square(error), axis=[1, 2, 3])
-        return reconstruction_loss
-
-    def _calculate_kl_loss(self, y_target, y_predicted):
-        kl_loss = -0.5 * K.sum(1 + self.log_variance - K.square(self.mu) - K.exp(self.log_variance), axis=1)
-
+ 
     def _create_folder_if_it_doesnt_exist(self, folder):
         if not os.path.exists(folder):
             os.makedirs(folder)

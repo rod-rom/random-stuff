@@ -1,4 +1,4 @@
-from autoencoders import Autoencoder
+from autoencoders import Autoencoder, VAE
 from tensorflow.keras.datasets import mnist
 
 
@@ -17,7 +17,7 @@ def load_mnist():
     return x_train, y_train, x_test, y_test
 
 def train(x_train, learning_rate, batch_size, epochs):
-    autoencoder = Autoencoder(
+    autoencoder = VAE(
             input_shape=(28, 28, 1), 
             conv_filters=(32, 64, 64, 64),
             conv_kernels=(3, 3, 3, 3), 
@@ -32,5 +32,5 @@ def train(x_train, learning_rate, batch_size, epochs):
 if __name__ == "__main__":
     x_train, _, _, _ = load_mnist()
     autoencoder = train(x_train[:10000], LEARNING_RATE, BATCH_SIZE, EPOCHS)
-    autoencoder.save("tf_autoencoder")
+    autoencoder.save("tf_vae")
     

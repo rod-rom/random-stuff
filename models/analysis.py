@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from autoencoders import Autoencoder
+from autoencoders import Autoencoder, VAE
 from train import load_mnist
 
 
@@ -41,7 +41,7 @@ def plot_images_encoded_in_latent_space(latent_representations, sample_labels):
 
 
 if __name__ == "__main__":
-    autoencoder = Autoencoder.load("tf_autoencoder")
+    autoencoder = VAE.load("tf_vae")
     x_train, y_train, x_test, y_test = load_mnist()
 
     num_sample_images_to_show = 8
